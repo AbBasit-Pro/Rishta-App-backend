@@ -1,4 +1,4 @@
-const { saveUser } = require('../models/userModel');
+const { saveUser, getAllUsers } = require('../models/userModel');
 const { getMatchFromGemini } = require('../services/geminiService');
 const { sendWhatsAppMessage } = require('../services/whatsappService');
 
@@ -6,15 +6,14 @@ async function handleMatch(req, res) {
   try {
     const user = req.body;
 
-    // 1. Save to database
+    // Save to DB
     saveUser(user, (err) => {
       if (err) console.log('DB save error:', err);
     });
 
-    // 2. Get match suggestion from Gemini
+    // Get Gemini AI match suggestion
     const rawMatch = await getMatchFromGemini(user);
 
-    // 3. Beautify the match response
     const match = `
 🌟 *AI Rishta Match Suggestion* 🌟
 
@@ -29,10 +28,10 @@ ${rawMatch}
 📲 *Sent via WhatsApp to:* ${user.phone}
     `.trim();
 
-    // 4. Send match to WhatsApp
+    // Send WhatsApp message
     await sendWhatsAppMessage(user.phone, match);
 
-    // 5. Send attractive JSON response
+    // Respond JSON
     res.status(200).json({
       success: true,
       title: '🎉 Match Sent Successfully!',
@@ -56,4 +55,33 @@ ${rawMatch}
   }
 }
 
-module.exports = { handleMatch };
+async function getAllMatches(req, res) {
+  try {
+    getAllUsers((err, results) => {
+      if (err) {
+        console.error('DB fetch error:', err);
+        return res.status(500).json({
+          success: false,
+          title: '❌ Failed to Fetch Records',
+          error: 'Database Error'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        title: '📄 All Match Requests',
+        count: results.length,
+        users: results
+      });
+    });
+  } catch (error) {
+    console.error('Fetch Error:', error);
+    res.status(500).json({
+      success: false,
+      title: '❌ Server Error',
+      error: 'Internal Server Error'
+    });
+  }
+}
+
+module.exports = { handleMatch, getAllMatches };
